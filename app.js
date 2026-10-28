@@ -4,6 +4,9 @@
 const SUPABASE_URL = "https://otipqykhxpqkwbspbnme.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_hnibWDwIpz_gSsXsQTi8Pg_CaVxDXV_";
 
+// Identificador fixo da sala GVG - Epic Seven. Não altere se quiser manter o mesmo link.
+const FIXED_ROOM_ID = "GVGEP7";
+
 const $ = (id) => document.getElementById(id);
 const supabaseConfigured = SUPABASE_URL.startsWith("https://") &&
   !SUPABASE_URL.includes("COLE_AQUI") &&
@@ -64,8 +67,12 @@ function showRoom(id, host) {
   $("setup").classList.add("hidden");
   $("room").classList.remove("hidden");
   $("roomCode").textContent = id;
-  $("roomTitle").textContent = host ? "Sua transmissão" : "Sala de transmissão";
-  $("roomHelp").textContent = "Compartilhe o link com vários espectadores. Para trocar quem transmite, libere a transmissão e deixe outra pessoa assumir.";
+  const isFixedRoom = id === FIXED_ROOM_ID;
+  $("roomTitle").textContent = isFixedRoom ? "GVG - Epic Seven" : (host ? "Sua transmissão" : "Sala de transmissão");
+  $("roomEyebrow").textContent = isFixedRoom ? "SALA PERMANENTE" : "SALA DE TRANSMISSÃO";
+  $("roomHelp").textContent = isFixedRoom
+    ? "Esta sala usa sempre o mesmo link. Se não houver transmissão, qualquer participante pode clicar em Assumir transmissão."
+    : "Compartilhe o link com vários espectadores. Para trocar quem transmite, libere a transmissão e deixe outra pessoa assumir.";
   updateRoleUI();
 }
 function showVideo(stream) {
@@ -418,6 +425,7 @@ async function stopRoom(message = "Sala encerrada.", notifyOthers = true) {
 $("hostTab").addEventListener("click", () => setMode("host"));
 $("watchTab").addEventListener("click", () => setMode("watch"));
 $("createBtn").addEventListener("click", createRoom);
+$("fixedRoomBtn").addEventListener("click", () => joinRoom(FIXED_ROOM_ID));
 $("joinBtn").addEventListener("click", () => joinRoom($("roomInput").value));
 $("roomInput").addEventListener("keydown", e => { if (e.key === "Enter") joinRoom($("roomInput").value); });
 $("copyBtn").addEventListener("click", async () => {
@@ -429,5 +437,10 @@ $("releaseBtn").addEventListener("click", () => releaseTransmission());
 $("takeoverBtn").addEventListener("click", takeOverTransmission);
 $("audioBtn").addEventListener("click", () => toast("O áudio é capturado quando o navegador permite e você seleciona essa opção ao compartilhar."));
 const initialRoom = new URLSearchParams(location.search).get("room");
-if (initialRoom) { setMode("watch"); $("roomInput").value = initialRoom; }
+if (initialRoom) {
+  setMode("watch");
+  $("roomInput").value = initialRoom;
+  // Links com ?room=GVGEP7 entram diretamente na sala fixa.
+  if (initialRoom.toUpperCase() === FIXED_ROOM_ID) joinRoom(FIXED_ROOM_ID);
+}
 if (!supabaseConfigured) $("configWarning").classList.remove("hidden");

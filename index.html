@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#0b1020">
-  <title>ScreenLink — Compartilhe sua tela</title>
+  <title>GVG - Epic Seven | ScreenLink</title>
   <link rel="stylesheet" href="style.css">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -17,11 +17,18 @@
 
     <section class="hero">
       <p class="eyebrow">SIMPLES. DIRETO. AO VIVO.</p>
-      <h1>Sua tela, <span>em qualquer lugar.</span></h1>
-      <p class="subhead">Compartilhe uma janela ou monitor com outra pessoa, por um link privado.</p>
+      <h1>GVG - Epic Seven</h1>
+      <p class="subhead">Uma sala fixa para assistir e compartilhar as batalhas. Entre pelo mesmo link sempre que quiser.</p>
     </section>
 
     <section id="setup" class="panel">
+      <div class="fixed-room-entry">
+        <p class="eyebrow">SALA PERMANENTE</p>
+        <h2>GVG - Epic Seven</h2>
+        <p class="fine">A sala continua disponível mesmo quando ninguém está transmitindo.</p>
+        <button id="fixedRoomBtn" class="primary" type="button">Entrar na sala fixa <span>→</span></button>
+      </div>
+      <div class="divider-label"><span>ou use uma sala temporária</span></div>
       <div class="tabs" role="tablist" aria-label="Modo de acesso">
         <button class="tab active" id="hostTab" type="button">Compartilhar tela</button>
         <button class="tab" id="watchTab" type="button">Assistir a uma tela</button>
@@ -35,7 +42,7 @@
       </div>
 
       <div id="watchPane" class="pane hidden">
-        <label for="roomInput">Código da sala</label>
+        <label for="roomInput">Código da sala temporária</label>
         <input id="roomInput" maxlength="8" placeholder="Ex.: A7K2PQ" autocomplete="off">
         <button id="joinBtn" class="primary" type="button">Entrar na sala <span>→</span></button>
         <p class="fine">Você precisa do código ou do link enviado por quem está transmitindo.</p>
@@ -50,7 +57,7 @@
     <section id="room" class="panel room hidden">
       <div class="room-head">
         <div>
-          <p class="eyebrow">SALA DE TRANSMISSÃO</p>
+          <p class="eyebrow" id="roomEyebrow">SALA DE TRANSMISSÃO</p>
           <h2 id="roomTitle">Sua sala</h2>
         </div>
         <span id="status" class="status"><span class="dot"></span> Preparando</span>
@@ -81,7 +88,7 @@
       <article><div class="feature-icon">♫</div><h3>Áudio opcional</h3><p>O áudio do sistema depende do navegador e da fonte selecionada.</p></article>
       <article><div class="feature-icon">↗</div><h3>Compartilhe por link</h3><p>Envie o endereço da sala para conectar o outro navegador.</p></article>
     </section>
-    <footer>ScreenLink · Protótipo de código aberto · Compartilhe apenas com pessoas em quem confia.</footer>
+    <footer>GVG - Epic Seven · ScreenLink · Compartilhe apenas com pessoas em quem confia.</footer>
   </main>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="app.js"></script>

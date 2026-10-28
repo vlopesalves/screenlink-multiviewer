@@ -4,7 +4,9 @@ Protótipo de compartilhamento de tela em tempo real para publicação no GitHub
 
 ## Funcionalidades previstas neste MVP
 - Criar sala com código de 6 caracteres e link compartilhável.
-- Entrar por código ou pelo parâmetro `?room=CODIGO`.
+- Sala permanente **GVG - Epic Seven**, com identificador fixo `GVGEP7` e link reutilizável.
+- Entrar em salas temporárias por código ou pelo parâmetro `?room=CODIGO`.
+- Acessar diretamente a sala fixa com `?room=GVGEP7`; o endereço pode ser compartilhado com todos os membros.
 - Captura de monitor, janela ou aba via seletor nativo do navegador.
 - Áudio do sistema quando o navegador e a fonte selecionada permitem.
 - Transmissão P2P usando WebRTC; Supabase Realtime usado para sinalização.
@@ -21,6 +23,9 @@ Protótipo de compartilhamento de tela em tempo real para publicação no GitHub
 
 ### Segurança
 Este protótipo usa nomes de canal previsíveis a partir do código da sala e sinalização Broadcast. Portanto, **não trate salas como privadas ou seguras para dados sensíveis**. Para produção, implemente autenticação/controle de acesso, códigos de alta entropia, expiração de sala, rate limiting e políticas Realtime que restrinjam o acesso. Não use chave `service_role` no navegador. O link é uma capacidade de acesso: compartilhe apenas com pessoas autorizadas.
+
+## Sala fixa GVG - Epic Seven
+O identificador permanente está definido em `FIXED_ROOM_ID` no início de `app.js`. O valor padrão é `GVGEP7` (seis caracteres). Mantenha esse valor para que todos entrem na mesma sala. Depois de publicar no GitHub Pages, o link fixo terá o formato `https://SEU-USUARIO.github.io/SEU-REPOSITORIO/?room=GVGEP7`. Troque os exemplos pelo endereço real do seu site. A sala é permanente no sentido de reutilizar o mesmo canal; a transmissão de vídeo só existe enquanto alguém estiver compartilhando a tela.
 
 ## 2. Testar localmente
 A captura de tela exige um contexto seguro (HTTPS ou localhost). Com Python instalado, dentro da pasta:
