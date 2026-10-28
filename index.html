@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1020">
+  <title>ScreenLink — Compartilhe sua tela</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+  <main class="shell">
+    <header class="topbar">
+      <a class="brand" href="./"><span class="brand-icon">▣</span> screenlink</a>
+      <span class="tag"><span class="dot"></span> Compartilhamento em tempo real</span>
+    </header>
+
+    <section class="hero">
+      <p class="eyebrow">SIMPLES. DIRETO. AO VIVO.</p>
+      <h1>Sua tela, <span>em qualquer lugar.</span></h1>
+      <p class="subhead">Compartilhe uma janela ou monitor com outra pessoa, por um link privado.</p>
+    </section>
+
+    <section id="setup" class="panel">
+      <div class="tabs" role="tablist" aria-label="Modo de acesso">
+        <button class="tab active" id="hostTab" type="button">Compartilhar tela</button>
+        <button class="tab" id="watchTab" type="button">Assistir a uma tela</button>
+      </div>
+
+      <div id="hostPane" class="pane">
+        <label for="hostName">Seu nome <span class="optional">(opcional)</span></label>
+        <input id="hostName" maxlength="40" placeholder="Ex.: Vinícius">
+        <div class="info-row"><span class="info-icon">ⓘ</span><span>O navegador perguntará qual janela, aba ou monitor você deseja compartilhar.</span></div>
+        <button id="createBtn" class="primary" type="button">Criar sala e compartilhar <span>↗</span></button>
+      </div>
+
+      <div id="watchPane" class="pane hidden">
+        <label for="roomInput">Código da sala</label>
+        <input id="roomInput" maxlength="8" placeholder="Ex.: A7K2PQ" autocomplete="off">
+        <button id="joinBtn" class="primary" type="button">Entrar na sala <span>→</span></button>
+        <p class="fine">Você precisa do código ou do link enviado por quem está transmitindo.</p>
+      </div>
+
+      <div id="configWarning" class="warning hidden">
+        <strong>Falta configurar o Supabase.</strong>
+        <p>Abra <code>app.js</code> e preencha <code>SUPABASE_URL</code> e <code>SUPABASE_ANON_KEY</code> com os dados do seu projeto.</p>
+      </div>
+    </section>
+
+    <section id="room" class="panel room hidden">
+      <div class="room-head">
+        <div>
+          <p class="eyebrow">SALA DE TRANSMISSÃO</p>
+          <h2 id="roomTitle">Sua sala</h2>
+        </div>
+        <span id="status" class="status"><span class="dot"></span> Preparando</span>
+      </div>
+      <div class="sharebar">
+        <div class="room-code"><span>CÓDIGO</span><strong id="roomCode">------</strong></div>
+        <button id="copyBtn" class="secondary" type="button">Copiar link</button>
+      </div>
+      <div class="video-frame">
+        <video id="screenVideo" autoplay playsinline></video>
+        <div id="videoPlaceholder" class="video-placeholder">
+          <div class="screen-symbol">▣</div>
+          <strong>A transmissão aparecerá aqui</strong>
+          <span>Quando a conexão estiver pronta, o vídeo será exibido nesta área.</span>
+        </div>
+      </div>
+      <div class="controls">
+        <button id="audioBtn" class="secondary" type="button" disabled>♫ Áudio do sistema</button>
+        <button id="releaseBtn" class="secondary hidden" type="button">Liberar transmissão</button>
+        <button id="takeoverBtn" class="primary hidden" type="button">Assumir transmissão</button>
+        <button id="stopBtn" class="danger" type="button">Encerrar sala</button>
+      </div>
+      <p id="roomHelp" class="fine">Compartilhe o link com vários espectadores. Para trocar quem transmite, libere a transmissão e deixe outra pessoa assumir.</p>
+    </section>
+
+    <section class="feature-grid">
+      <article><div class="feature-icon">▤</div><h3>Janela ou monitor</h3><p>Escolha a fonte de captura na janela de permissões do navegador.</p></article>
+      <article><div class="feature-icon">♫</div><h3>Áudio opcional</h3><p>O áudio do sistema depende do navegador e da fonte selecionada.</p></article>
+      <article><div class="feature-icon">↗</div><h3>Compartilhe por link</h3><p>Envie o endereço da sala para conectar o outro navegador.</p></article>
+    </section>
+    <footer>ScreenLink · Protótipo de código aberto · Compartilhe apenas com pessoas em quem confia.</footer>
+  </main>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="app.js"></script>
+</body>
+</html>
