@@ -26,6 +26,8 @@
         <p class="eyebrow">SALA PERMANENTE</p>
         <h2>GVG - Epic Seven</h2>
         <p class="fine">A sala continua disponível mesmo quando ninguém está transmitindo.</p>
+        <label class="fixed-name-label" for="fixedName">Seu nome <span class="optional">(obrigatório)</span></label>
+        <input id="fixedName" class="fixed-name-input" maxlength="40" placeholder="Como o pessoal vai te reconhecer?" autocomplete="nickname" required>
         <button id="fixedRoomBtn" class="primary" type="button">Entrar na sala fixa <span>→</span></button>
       </div>
       <div class="divider-label"><span>ou use uma sala temporária</span></div>
@@ -66,6 +68,13 @@
         <div class="room-code"><span>CÓDIGO</span><strong id="roomCode">------</strong></div>
         <button id="copyBtn" class="secondary" type="button">Copiar link</button>
       </div>
+      <section class="participants-panel" aria-labelledby="participantsTitle">
+        <div class="participants-heading">
+          <h3 id="participantsTitle">Pessoas na sala</h3>
+          <span id="participantCount" class="participant-count">0</span>
+        </div>
+        <ul id="participantsList" class="participants-list"><li class="participants-empty">Carregando participantes…</li></ul>
+      </section>
       <div class="video-frame">
         <video id="screenVideo" autoplay playsinline></video>
         <div id="videoPlaceholder" class="video-placeholder">

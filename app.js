@@ -22,6 +22,7 @@ let isHost = false;
 let currentHostId = null;
 let roomReady = false;
 let toastTimer = null;
+let participantName = "";
 const peers = new Map(); // remote session ID -> { pc, remoteDescriptionSet, pendingCandidates }
 const sessionId = (crypto.randomUUID ? crypto.randomUUID() : String(Math.random()).slice(2));
 
@@ -112,6 +113,22 @@ function closePeer(remoteId) {
 function closeAllPeers() {
   for (const id of [...peers.keys()]) closePeer(id);
 }
+async function prioritizeVideoSmoothness(sender) {
+  // Prioriza fluidez (FPS) sobre resolução quando a conexão fica limitada.
+  // O navegador pode ignorar opções que não suporta; por isso falhas são toleradas.
+  try {
+    const params = sender.getParameters();
+    params.degradationPreference = "maintain-framerate";
+    if (params.encodings && params.encodings.length) {
+      params.encodings[0].maxFramerate = 60;
+      params.encodings[0].maxBitrate = 4500000;
+    }
+    await sender.setParameters(params);
+  } catch (err) {
+    console.warn("Não foi possível aplicar todas as preferências de vídeo:", err);
+  }
+}
+
 function createPeer(remoteId) {
   closePeer(remoteId);
   const pc = new RTCPeerConnection(rtcConfig);
@@ -145,8 +162,11 @@ async function subscribeRoom(id) {
   if (!sb) throw new Error("Configure o Supabase em app.js antes de iniciar.");
   roomId = id;
   channel = sb.channel("screenlink-" + id, {
-    config: { broadcast: { self: false, ack: true } }
+    config: { broadcast: { self: false, ack: true }, presence: { key: sessionId } }
   });
+  channel.on("presence", { event: "sync" }, () => renderParticipants());
+  channel.on("presence", { event: "join" }, () => renderParticipants());
+  channel.on("presence", { event: "leave" }, () => renderParticipants());
   channel.on("broadcast", { event: "signal" }, async ({ payload }) => {
     if (!payload || payload.sender === sessionId) return;
     if (payload.target && payload.target !== sessionId) return;
@@ -162,6 +182,56 @@ async function subscribeRoom(id) {
       }
     });
   });
+  await trackPresence();
+}
+async function trackPresence() {
+  if (!channel || !roomId) return;
+  try {
+    await channel.track({
+      sessionId,
+      name: (participantName || "Participante").slice(0, 40),
+      isStreaming: Boolean(isHost && localStream),
+      updatedAt: Date.now()
+    });
+  } catch (err) {
+    console.warn("Não foi possível atualizar a lista de participantes:", err);
+  }
+}
+function renderParticipants() {
+  const list = $("participantsList");
+  if (!list || !channel) return;
+  const presence = channel.presenceState();
+  const participants = [];
+  for (const [key, metas] of Object.entries(presence || {})) {
+    const meta = Array.isArray(metas) ? metas[metas.length - 1] : null;
+    if (!meta) continue;
+    participants.push({ id: meta.sessionId || key, name: meta.name || "Participante", isStreaming: Boolean(meta.isStreaming) });
+  }
+  participants.sort((a, b) => Number(b.isStreaming) - Number(a.isStreaming) || a.name.localeCompare(b.name, "pt-BR"));
+  $("participantCount").textContent = String(participants.length);
+  list.replaceChildren();
+  if (!participants.length) {
+    const empty = document.createElement("li");
+    empty.className = "participants-empty";
+    empty.textContent = "Ninguém apareceu na lista ainda.";
+    list.append(empty);
+    return;
+  }
+  for (const participant of participants) {
+    const item = document.createElement("li");
+    const dot = document.createElement("span");
+    dot.className = "presence-dot";
+    const name = document.createElement("span");
+    name.textContent = participant.name + (participant.id === sessionId ? " (você)" : "");
+    item.append(dot, name);
+    if (participant.isStreaming) {
+      const tag = document.createElement("span");
+      tag.className = "streaming-tag";
+      tag.textContent = "AO VIVO";
+      item.append(tag);
+    }
+    list.append(item);
+  }
 }
 async function sendSignal(type, data = {}, target = null) {
   if (!channel) return;
@@ -192,6 +262,7 @@ function becomeViewer(hostId = null) {
   closeAllPeers();
   showPlaceholder(hostId ? "Conectando à nova transmissão…" : "A transmissão está livre. Você pode assumi-la.");
   updateRoleUI();
+  void trackPresence();
 }
 async function handleSignal(message) {
   const sender = message.sender;
@@ -205,6 +276,7 @@ async function handleSignal(message) {
         if (isHost) becomeViewer(sender); // resolve accidental simultaneous takeover by yielding to the latest announcement
         currentHostId = sender;
         updateRoleUI();
+        void trackPresence();
         showPlaceholder("Conectando à transmissão…");
         await sendSignal("viewer-ready", {}, sender);
         setStatus("Conectando à transmissão…");
@@ -213,7 +285,10 @@ async function handleSignal(message) {
         if (!isHost || !localStream) break;
         {
           const state = createPeer(sender);
-          localStream.getTracks().forEach(track => state.pc.addTrack(track, localStream));
+          for (const track of localStream.getTracks()) {
+            const senderTrack = state.pc.addTrack(track, localStream);
+            if (track.kind === "video") await prioritizeVideoSmoothness(senderTrack);
+          }
           const offer = await state.pc.createOffer();
           await state.pc.setLocalDescription(offer);
           await sendSignal("offer", state.pc.localDescription, sender);
@@ -264,6 +339,7 @@ async function handleSignal(message) {
           currentHostId = null;
           if (!isHost) showPlaceholder("A transmissão está livre. Você pode assumi-la.");
           updateRoleUI();
+          void trackPresence();
           setStatus("Transmissão liberada");
         }
         break;
@@ -283,16 +359,31 @@ async function captureScreen() {
   if (!navigator.mediaDevices?.getDisplayMedia) {
     throw new Error("Seu navegador não suporta captura de tela. Use uma versão atual do Chrome, Edge ou Firefox.");
   }
+  let stream;
   try {
-    return await navigator.mediaDevices.getDisplayMedia({ video: { frameRate: { ideal: 30, max: 60 } }, audio: true });
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 60, max: 60 } },
+      audio: true
+    });
   } catch (err) {
     if (err.name === "NotAllowedError") throw err;
-    const stream = await navigator.mediaDevices.getDisplayMedia({ video: true, audio: false });
+    stream = await navigator.mediaDevices.getDisplayMedia({
+      video: { frameRate: { ideal: 60, max: 60 } },
+      audio: false
+    });
     toast("Seu navegador não disponibilizou áudio do sistema; a tela será transmitida sem áudio.");
-    return stream;
   }
+  const videoTrack = stream.getVideoTracks()[0];
+  if (videoTrack) {
+    // Avisa o navegador que o conteúdo tem movimento (jogo), e não é uma apresentação estática.
+    try { videoTrack.contentHint = "motion"; } catch (_) {}
+    try { await videoTrack.applyConstraints({ frameRate: { ideal: 60, max: 60 } }); }
+    catch (err) { console.warn("A captura não aceitou 60 FPS; será usada a taxa disponível:", err); }
+  }
+  return stream;
 }
 async function createRoom() {
+  participantName = ($("hostName").value || "").trim().slice(0, 40) || "Anfitrião";
   if (!supabaseConfigured) {
     $("configWarning").classList.remove("hidden");
     toast("Configure o Supabase em app.js para ativar as salas.");
@@ -314,6 +405,7 @@ async function createRoom() {
     });
     history.replaceState({}, "", roomUrl(id));
     await sendSignal("host-started");
+    await trackPresence();
     setStatus("Aguardando espectadores");
     updateRoleUI();
     await navigator.clipboard?.writeText(roomUrl(id)).catch(() => {});
@@ -333,6 +425,18 @@ async function createRoom() {
   }
 }
 async function joinRoom(id) {
+  const requestedId = (id || "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+  if (requestedId === FIXED_ROOM_ID) {
+    const enteredName = ($("fixedName").value || "").trim().replace(/\s+/g, " ").slice(0, 40);
+    if (!enteredName) {
+      $("fixedName").focus();
+      toast("Digite seu nome para entrar na sala GVG - Epic Seven.");
+      return;
+    }
+    participantName = enteredName;
+  } else if (!participantName) {
+    participantName = ($("hostName").value || "").trim().replace(/\s+/g, " ").slice(0, 40) || "Participante";
+  }
   if (!supabaseConfigured) {
     $("configWarning").classList.remove("hidden");
     toast("Configure o Supabase em app.js para ativar as salas.");
@@ -386,6 +490,7 @@ async function takeOverTransmission() {
       track.onended = () => releaseTransmission("O compartilhamento terminou. A sala continua aberta para outra pessoa transmitir.");
     });
     await sendSignal("host-started");
+    await trackPresence();
     updateRoleUI();
     setStatus("Aguardando espectadores");
     toast("Você assumiu a transmissão nesta sala.");
@@ -416,6 +521,8 @@ async function stopRoom(message = "Sala encerrada.", notifyOthers = true) {
   $("screenVideo").classList.remove("visible");
   $("videoPlaceholder").classList.remove("hidden");
   $("audioBtn").disabled = true;
+  $("participantsList").replaceChildren();
+  $("participantCount").textContent = "0";
   $("setup").classList.remove("hidden");
   $("room").classList.add("hidden");
   history.replaceState({}, "", location.pathname);
@@ -426,6 +533,7 @@ $("hostTab").addEventListener("click", () => setMode("host"));
 $("watchTab").addEventListener("click", () => setMode("watch"));
 $("createBtn").addEventListener("click", createRoom);
 $("fixedRoomBtn").addEventListener("click", () => joinRoom(FIXED_ROOM_ID));
+$("fixedName").addEventListener("keydown", e => { if (e.key === "Enter") joinRoom(FIXED_ROOM_ID); });
 $("joinBtn").addEventListener("click", () => joinRoom($("roomInput").value));
 $("roomInput").addEventListener("keydown", e => { if (e.key === "Enter") joinRoom($("roomInput").value); });
 $("copyBtn").addEventListener("click", async () => {
@@ -440,7 +548,10 @@ const initialRoom = new URLSearchParams(location.search).get("room");
 if (initialRoom) {
   setMode("watch");
   $("roomInput").value = initialRoom;
-  // Links com ?room=GVGEP7 entram diretamente na sala fixa.
-  if (initialRoom.toUpperCase() === FIXED_ROOM_ID) joinRoom(FIXED_ROOM_ID);
+  // Para links da sala fixa, solicite o nome antes de conectar.
+  if (initialRoom.toUpperCase() === FIXED_ROOM_ID) {
+    $("fixedName").focus();
+    toast("Digite seu nome para entrar na sala GVG - Epic Seven.");
+  }
 }
 if (!supabaseConfigured) $("configWarning").classList.remove("hidden");
